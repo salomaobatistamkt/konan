@@ -1,9 +1,37 @@
 # Konan na VPS (modo web): você fala pelo navegador do celular ou do PC.
-# Cérebro por API (Groq gratuito por padrão); ouvido LOCAL (Whisper no próprio servidor, sem enviar áudio a ninguém);
-# voz do próprio navegador. O modelo do Whisper é baixado na 1ª vez e fica guardado no volume /data.
+# Tudo no próprio servidor, sem chaves: cérebro pequeno (Qwen3 0,6B no llama.cpp), ouvido (Whisper) e voz do navegador.
+# Os modelos são baixados na 1ª vez e ficam guardados em volumes. Para usar um cérebro por API (Groq/Gemini) em vez do
+# local, defina CEREBRO_URL, CEREBRO_MODELO e CEREBRO_CHAVE.
 name: konan
 
 services:
+  # Cérebro local pequeno (~0,5 GB). Limitado para não apertar os outros apps da VPS.
+  cerebro:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    restart: unless-stopped
+    environment:
+      LLAMA_CACHE: /modelos
+    command:
+      - -hf
+      - ${MODELO:-unsloth/Qwen3-0.6B-GGUF:Q4_K_M}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --ctx-size
+      - ${CONTEXTO:-2048}
+      - --threads
+      - ${THREADS:-1}
+      - --parallel
+      - "1"
+      - --jinja
+    expose:
+      - "8080"
+    volumes:
+      - modelos-cerebro:/modelos
+    mem_limit: 800m
+    cpus: "0.8"
+
   voz:
     build:
       context: ./voz
@@ -14,9 +42,10 @@ services:
       KONAN_MODO: web
       KONAN_NOME: ${KONAN_NOME:-Konan}
       KONAN_SENHA: ${KONAN_SENHA:?defina KONAN_SENHA (mínimo 8 caracteres)}
-      CEREBRO_URL: ${CEREBRO_URL:-https://api.groq.com/openai/v1}
-      CEREBRO_MODELO: ${CEREBRO_MODELO:-llama-3.3-70b-versatile}
-      CEREBRO_CHAVE: ${CEREBRO_CHAVE:?defina CEREBRO_CHAVE (chave da API)}
+      CEREBRO_URL: ${CEREBRO_URL:-http://cerebro:8080/v1}
+      CEREBRO_MODELO: ${CEREBRO_MODELO:-local}
+      CEREBRO_CHAVE: ${CEREBRO_CHAVE:-}
+      CEREBRO_MAX_TOKENS: ${CEREBRO_MAX_TOKENS:-200}
       OUVIDO_MOTOR: ${OUVIDO_MOTOR:-local}
       WHISPER_MODELO: ${WHISPER_MODELO:-base}
       WHISPER_THREADS: ${WHISPER_THREADS:-1}
@@ -34,3 +63,4 @@ services:
 
 volumes:
   dados:
+  modelos-cerebro:

@@ -183,3 +183,17 @@ def test_ouvido_local_com_plano_b_pela_api(monkeypatch):
     monkeypatch.setattr(config, "OUVIDO_CHAVE", "")
     with pytest.raises(RuntimeError):
         ouvido.Ouvido()
+
+
+@pytest.mark.parametrize("url, local", [
+    ("http://cerebro:8080/v1", True),
+    ("http://localhost:8080/v1", True),
+    ("http://192.168.0.10:8080/v1", True),
+    ("http://172.20.0.5:8080/v1", True),
+    ("https://api.groq.com/openai/v1", False),
+    ("https://generativelanguage.googleapis.com/v1beta/openai", False),
+])
+def test_cerebro_local_detectado_pelo_endereco(url, local):
+    assert cerebro.url_local(url) is local
+    # mesmo com uma chave salva, um cérebro local desliga o "modo pensar" e funciona sem a chave
+    assert cerebro.Cerebro(url=url, chave="qualquer").local is local

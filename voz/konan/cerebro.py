@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Callable, Iterator
 
 import httpx
+from urllib.parse import urlparse
 
 from . import config, matematica
 
@@ -50,6 +51,16 @@ def para_fala(texto: str) -> str:
     return re.sub(r"\s{2,}", " ", texto).strip()
 
 
+
+def url_local(url: str) -> bool:
+    """True se o cérebro roda na própria máquina/rede (nome de serviço do Docker, localhost ou IP privado)."""
+    host = (urlparse(url).hostname or "").lower()
+    return (
+        "." not in host or host == "localhost" or host.startswith(("127.", "10.", "192.168."))
+        or bool(re.match(r"172\.(1[6-9]|2\d|3[01])\.", host))
+    )
+
+
 class Cerebro:
     def __init__(self, url: str | None = None, cliente: httpx.Client | None = None,
                  chave: str | None = None, modelo: str | None = None):
@@ -61,7 +72,7 @@ class Cerebro:
         self.cliente = cliente or httpx.Client(timeout=httpx.Timeout(120, connect=5))
         self.cliente.headers.update(cabecalhos)
         # Campos extras só existem no llama.cpp; APIs externas (Groq/Gemini) podem recusá-los.
-        self.local = not self.chave
+        self.local = not self.chave or url_local(self.base)
 
     def pronto(self) -> bool:
         try:

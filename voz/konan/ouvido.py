@@ -91,4 +91,12 @@ class _Api:
 
 
 def Ouvido():  # noqa: N802 — fábrica com cara de classe
-    return _Api() if config.OUVIDO_MOTOR == "api" else _Local()
+    if config.OUVIDO_MOTOR == "api":
+        return _Api()
+    try:
+        return _Local()
+    except Exception as erro:  # modelo não baixou, pouca memória, pacote ausente…
+        if not config.OUVIDO_CHAVE:
+            raise
+        log.error("ouvido local indisponível (%s); usando o ouvido por API.", erro)
+        return _Api()

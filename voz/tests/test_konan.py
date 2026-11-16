@@ -167,3 +167,19 @@ def test_modo_web_login_e_conversa(tmp_path, monkeypatch):
     assert [l["tipo"] for l in linhas] == ["ouvi", "frase", "fim"]
     assert linhas[1] == {"tipo": "frase", "texto": "Dá quatrocentos e vinte e um e vinte.", "audio": None}
     assert konan.memoria.total() == 1
+
+
+def test_ouvido_local_com_plano_b_pela_api(monkeypatch):
+    from konan import config, ouvido
+
+    class Quebrado:
+        def __init__(self):
+            raise RuntimeError("modelo não baixou")
+
+    monkeypatch.setattr(config, "OUVIDO_MOTOR", "local")
+    monkeypatch.setattr(config, "OUVIDO_CHAVE", "chave-de-teste")
+    monkeypatch.setattr(ouvido, "_Local", Quebrado)
+    assert isinstance(ouvido.Ouvido(), ouvido._Api)
+    monkeypatch.setattr(config, "OUVIDO_CHAVE", "")
+    with pytest.raises(RuntimeError):
+        ouvido.Ouvido()

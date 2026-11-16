@@ -52,14 +52,14 @@ services:
       OUVIDO_URL: ${OUVIDO_URL:-https://api.groq.com/openai/v1}
       OUVIDO_MODELO: ${OUVIDO_MODELO:-whisper-large-v3-turbo}
       OUVIDO_CHAVE: ${OUVIDO_CHAVE:-}
-      VOZ_MOTOR: navegador
+      VOZ_MOTOR: ${VOZ_MOTOR:-kokoro}
       VOZ_VELOCIDADE: ${VOZ_VELOCIDADE:-1.05}
       TZ: ${TZ:-America/Sao_Paulo}
     expose:
       - "8090"
     volumes:
       - dados:/data
-    mem_limit: 900m
+    mem_limit: 1100m
 
 volumes:
   dados:

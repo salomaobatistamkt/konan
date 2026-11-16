@@ -197,3 +197,36 @@ def test_cerebro_local_detectado_pelo_endereco(url, local):
     assert cerebro.url_local(url) is local
     # mesmo com uma chave salva, um cérebro local desliga o "modo pensar" e funciona sem a chave
     assert cerebro.Cerebro(url=url, chave="qualquer").local is local
+
+
+def test_fatos_sem_duplicar_e_com_teto(tmp_path):
+    m = Memoria(str(tmp_path / "f.sqlite3"))
+    assert m.guardar_fato("Mora em Mossoró", maximo=3)
+    assert not m.guardar_fato("mora em mossoro", maximo=3)  # mesma coisa, só reforça
+    for f in ["Gosta de café", "Tem uma filha chamada Ana", "Trabalha com marketing"]:
+        m.guardar_fato(f, maximo=3)
+    assert m.total_fatos() == 3
+    m.esquecer_tudo()
+    assert m.total_fatos() == 0
+
+
+def test_fatos_relevantes_e_sementes(tmp_path):
+    (tmp_path / "k").mkdir()
+    (tmp_path / "k" / "a.txt").write_text("# comentário\nTem um cachorro chamado Thor\nGosta de violão\n", encoding="utf-8")
+    m = Memoria(str(tmp_path / "f.sqlite3"))
+    assert m.importar_sementes(str(tmp_path / "k")) == 2
+    assert m.importar_sementes(str(tmp_path / "k")) == 0
+    assert m.fatos_relevantes("como está o Thor?", 1) == ["Tem um cachorro chamado Thor"]
+
+
+def test_extracao_de_fatos():
+    from konan import fatos
+    assert fatos.extrair_explicito("Konan, lembre que minha filha se chama Ana") == ["minha filha se chama Ana"]
+    assert fatos.interpretar('Aqui: ["Mora em Mossoró", "x"]') == ["Mora em Mossoró"]
+    assert fatos.interpretar("sem json") == []
+
+
+def test_persona_sem_girias():
+    from konan.cerebro import montar_sistema
+    texto = montar_sistema([], ["Mora em Mossoró"])
+    assert "Mora em Mossoró" in texto and "Não use \"tô\"" in texto

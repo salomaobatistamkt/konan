@@ -10,11 +10,12 @@ from typing import Callable, Iterator
 from . import config
 from .cerebro import Cerebro
 from .conversa import Conversa
+from .fatos import Aprendiz
 from .memoria import Memoria
 
 log = logging.getLogger("konan")
 
-SAUDACOES = ["Oi! Tô aqui.", "Oi, pode falar.", "Fala, tô ouvindo.", "Oi! Em que posso ajudar?"]
+SAUDACOES = ["Oi! Estou aqui.", "Oi, pode falar.", "Pois não, estou ouvindo.", "Oi! Em que posso ajudar?"]
 
 
 class Konan:
@@ -23,6 +24,7 @@ class Konan:
         self.cerebro = cerebro
         self.conversa = Conversa(memoria)
         self.publicar = publicar
+        self.aprendiz = Aprendiz(memoria, cerebro)
 
     def processar(self, texto: str, direto: bool = False) -> Iterator[str]:
         """Gera as frases da resposta. Não gera nada se a Konan não foi chamada."""
@@ -45,7 +47,7 @@ class Konan:
         elif decisao.tipo == "confirmar_esquecer":
             yield "Tem certeza que quer que eu apague toda a minha memória? Diga sim para confirmar."
         elif decisao.tipo == "esquecido":
-            yield "Pronto, apaguei tudo. Começando do zero."
+            yield "Pronto, apaguei tudo. Vamos começar do zero."
         else:
             self.publicar("pensando", decisao.pedido, "você")
             inicio, partes = time.time(), []
@@ -63,5 +65,6 @@ class Konan:
             resposta = " ".join(partes)
             if resposta:
                 self.memoria.guardar(decisao.pedido, resposta)
+                self.aprendiz.submeter(decisao.pedido)
             log.info("respondi em %.1fs: %s", time.time() - inicio, resposta)
         self.conversa.acordar()

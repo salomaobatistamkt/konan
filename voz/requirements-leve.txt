@@ -1,5 +1,6 @@
-# Modo web na VPS: cérebro por API, ouvido LOCAL (faster-whisper, CPU, sem enviar áudio a terceiros) e voz do navegador
+# Modo web na VPS: cérebro por API, ouvido LOCAL (faster-whisper, CPU, sem enviar áudio a terceiros) e voz neural (Kokoro) no servidor
 numpy>=1.26,<3
 httpx>=0.27,<1
 sympy>=1.13,<2
 faster-whisper>=1.1,<2
+kokoro-onnx>=0.4.9,<1

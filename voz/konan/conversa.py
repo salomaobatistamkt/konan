@@ -57,7 +57,8 @@ class Conversa:
             return Decisao("confirmar_esquecer", pedido)
 
         memorias = self.memoria.lembrar(pedido, antes_de=self.sessao_inicio, limite=config.MEMORIAS_CONTEXTO)
-        mensagens = [{"role": "system", "content": montar_sistema(memorias)}]
+        fatos = self.memoria.fatos_relevantes(pedido, config.FATOS_CONTEXTO) if config.FATOS_ATIVO else []
+        mensagens = [{"role": "system", "content": montar_sistema(memorias, fatos)}]
         for usuario, konan in self.memoria.recentes(self.sessao_inicio, config.TURNOS_CONTEXTO):
             mensagens += [{"role": "user", "content": usuario}, {"role": "assistant", "content": konan}]
         mensagens.append({"role": "user", "content": pedido})

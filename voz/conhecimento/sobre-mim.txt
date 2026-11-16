@@ -1,0 +1,5 @@
+# Fatos que a Konan já deve saber. Um por linha, frase curta. Linhas com # são ignoradas.
+# Ela também aprende sozinha conversando (e esquece o que não usa quando passa do limite).
+# Exemplos (apague o # para ativar):
+# O usuário prefere respostas curtas e diretas.
+# O usuário mora em Mossoró, no Rio Grande do Norte.

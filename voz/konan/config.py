@@ -62,6 +62,12 @@ SESSAO_EXPIRA_S = _int("SESSAO_EXPIRA_S", 600)
 TURNOS_CONTEXTO = _int("TURNOS_CONTEXTO", 6)
 MEMORIAS_CONTEXTO = _int("MEMORIAS_CONTEXTO", 3)
 
+# Fatos duráveis sobre o usuário (aprendidos conversando + sementes em conhecimento/)
+FATOS_ATIVO = os.environ.get("FATOS_ATIVO", "1") not in ("0", "false", "nao", "não")
+FATOS_MAX = _int("FATOS_MAX", 300)  # acima disso, esquece os menos usados
+FATOS_CONTEXTO = _int("FATOS_CONTEXTO", 8)
+CONHECIMENTO = os.environ.get("KONAN_CONHECIMENTO", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "conhecimento"))
+
 # Interface (opcional)
 INTERFACE_ATIVA = os.environ.get("INTERFACE_ATIVA", "1") not in ("0", "false", "nao", "não")
 INTERFACE_PORTA = _int("INTERFACE_PORTA", 8090)

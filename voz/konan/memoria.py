@@ -28,6 +28,10 @@ class Memoria:
                 CREATE VIRTUAL TABLE IF NOT EXISTS trocas_busca USING fts5(
                     usuario, konan, content='trocas', content_rowid='id', tokenize='unicode61 remove_diacritics 2'
                 );
+                CREATE TABLE IF NOT EXISTS fatos (
+                    id INTEGER PRIMARY KEY, chave TEXT NOT NULL UNIQUE, texto TEXT NOT NULL,
+                    criado REAL NOT NULL, usado REAL NOT NULL, usos INTEGER NOT NULL DEFAULT 0
+                );
                 CREATE TRIGGER IF NOT EXISTS trocas_ai AFTER INSERT ON trocas BEGIN
                     INSERT INTO trocas_busca(rowid, usuario, konan) VALUES (new.id, new.usuario, new.konan);
                 END;
@@ -67,9 +71,64 @@ class Memoria:
             except sqlite3.OperationalError:
                 return []
 
+    # --- fatos duráveis (ideia do banco de memória do OpenJarvis: frases curtas, sem duplicar, com teto) ---
+    def guardar_fato(self, texto: str, maximo: int | None = None) -> bool:
+        """Guarda um fato curto. Retorna False se já existia (nesse caso só reforça o uso)."""
+        texto = re.sub(r"\s+", " ", texto).strip(" -•\"'")[:200]
+        chave = " ".join(normalizar(texto).split())
+        if len(chave) < 4:
+            return False
+        agora = time.time()
+        with self._trava, self._db:
+            if self._db.execute("SELECT 1 FROM fatos WHERE chave = ?", (chave,)).fetchone():
+                self._db.execute("UPDATE fatos SET usado = ?, usos = usos + 1 WHERE chave = ?", (agora, chave))
+                return False
+            self._db.execute("INSERT INTO fatos(chave, texto, criado, usado) VALUES (?, ?, ?, ?)", (chave, texto, agora, agora))
+            if maximo:
+                self._db.execute(
+                    "DELETE FROM fatos WHERE id IN (SELECT id FROM fatos ORDER BY usos ASC, usado ASC LIMIT "
+                    "MAX(0, (SELECT COUNT(*) FROM fatos) - ?))", (maximo,))
+        return True
+
+    def fatos_relevantes(self, pedido: str, limite: int) -> list[str]:
+        """Fatos que combinam com o pedido (por palavras); se couber tudo, devolve todos."""
+        with self._trava:
+            todos = self._db.execute("SELECT id, texto, chave FROM fatos ORDER BY usos DESC, usado DESC").fetchall()
+        if len(todos) <= limite:
+            escolhidos = todos
+        else:
+            termos = {p for p in normalizar(pedido).split() if len(p) > 2 and p not in _PALAVRAS_VAZIAS}
+            pontos = sorted(todos, key=lambda f: -len(termos & set(f[2].split())))
+            escolhidos = [f for f in pontos if termos & set(f[2].split())][:limite] or todos[:limite]
+        if escolhidos:
+            with self._trava, self._db:
+                self._db.executemany("UPDATE fatos SET usado = ?, usos = usos + 1 WHERE id = ?",
+                                     [(time.time(), f[0]) for f in escolhidos])
+        return [f[1] for f in escolhidos]
+
+    def importar_sementes(self, pasta: str) -> int:
+        """Lê conhecimento/*.txt (um fato por linha; # comenta) e guarda os que ainda não existem."""
+        novos = 0
+        if not os.path.isdir(pasta):
+            return 0
+        for nome in sorted(os.listdir(pasta)):
+            if not nome.endswith(".txt"):
+                continue
+            with open(os.path.join(pasta, nome), encoding="utf-8") as f:
+                for linha in f:
+                    linha = linha.strip()
+                    if linha and not linha.startswith("#") and self.guardar_fato(linha):
+                        novos += 1
+        return novos
+
+    def total_fatos(self) -> int:
+        with self._trava:
+            return self._db.execute("SELECT COUNT(*) FROM fatos").fetchone()[0]
+
     def esquecer_tudo(self) -> None:
         with self._trava, self._db:
             self._db.execute("DELETE FROM trocas")
+            self._db.execute("DELETE FROM fatos")
 
     def total(self) -> int:
         with self._trava:

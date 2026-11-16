@@ -3,44 +3,51 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#05070d">
+<meta name="theme-color" content="#07060b">
 <title>Konan</title>
 <style>
-  :root { --fundo:#05070d; --cor:#5ab4ff; --cor2:#7b5cff; --texto:#cfe3ff; }
+  :root { --fundo:#07060b; --brasa:#e5484d; --brasa2:#ff8a5b; --violeta:#6a4bd8; --texto:#e9e4f2; --papel:#d9d2e6; }
   * { box-sizing:border-box; margin:0; }
-  body { background:radial-gradient(circle at 50% 40%, #0c1426 0%, var(--fundo) 70%); color:var(--texto);
-         font-family:system-ui, sans-serif; min-height:100vh; display:flex; flex-direction:column;
-         align-items:center; justify-content:center; gap:40px; padding:16px; overflow:hidden;
+  body { background:radial-gradient(ellipse at 50% 30%, #17111f 0%, var(--fundo) 65%); color:var(--texto);
+         font-family:Georgia, "Times New Roman", serif; min-height:100vh; display:flex; flex-direction:column;
+         align-items:center; justify-content:center; gap:34px; padding:16px; overflow:hidden;
          -webkit-user-select:none; user-select:none; }
-  .nucleo { position:relative; width:min(60vw,280px); aspect-ratio:1; }
-  .anel, .esfera { position:absolute; inset:0; border-radius:50%; }
-  .anel { border:1px solid color-mix(in srgb, var(--cor) 40%, transparent); animation:girar 18s linear infinite; }
-  .anel:nth-child(2) { inset:-10%; border-style:dashed; animation-duration:30s; animation-direction:reverse; opacity:.5; }
-  .anel:nth-child(3) { inset:-22%; opacity:.25; animation-duration:45s; }
-  .esfera { inset:18%; background:radial-gradient(circle at 40% 35%, #fff 0%, var(--cor) 25%, var(--cor2) 60%, transparent 72%);
-            filter:blur(2px); box-shadow:0 0 80px var(--cor), 0 0 160px var(--cor2); transition:opacity .3s;
-            animation:respirar 4s ease-in-out infinite; opacity:.55; }
-  body[data-estado="ouvindo"] .esfera { opacity:1; animation-duration:1.2s; }
-  body[data-estado="pensando"] .esfera { opacity:.9; animation:pensar .8s ease-in-out infinite; --cor:#b07bff; }
-  body[data-estado="falando"] .esfera { opacity:1; animation:falar .35s ease-in-out infinite alternate; }
-  body[data-estado="erro"] { --cor:#ff5a6e; --cor2:#a0203a; }
-  .estado { font-size:12px; letter-spacing:.35em; text-transform:uppercase; opacity:.6; text-align:center; }
-  .legenda { max-width:640px; text-align:center; font-size:clamp(16px,2.4vw,22px); line-height:1.5; min-height:3em; }
-  .legenda .quem { display:block; font-size:11px; letter-spacing:.3em; opacity:.5; margin-bottom:6px; text-transform:uppercase; }
+  #chuva { position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; opacity:.55; }
+  body > *:not(#chuva) { position:relative; z-index:1; }
+  .nucleo { position:relative; width:min(62vw,300px); aspect-ratio:1; display:grid; place-items:center; }
+  .onda { position:absolute; inset:0; border-radius:50%; border:1px solid color-mix(in srgb, var(--brasa) 55%, transparent);
+          opacity:0; transform:scale(.35); animation:onda 6s ease-out infinite; }
+  .onda:nth-child(2) { animation-delay:2s; } .onda:nth-child(3) { animation-delay:4s; }
+  .selo { position:absolute; inset:30%; border-radius:50%;
+          background:radial-gradient(circle at 50% 38%, #ffd9c9 0%, var(--brasa2) 22%, var(--brasa) 55%, #4a0f1d 100%);
+          box-shadow:0 0 50px color-mix(in srgb, var(--brasa) 70%, transparent), inset 0 0 24px rgba(0,0,0,.45);
+          animation:respirar 5s ease-in-out infinite; transition:filter .4s; }
+  .selo::before, .selo::after { content:""; position:absolute; inset:-34%; border-radius:50%; border:1px solid color-mix(in srgb, var(--papel) 35%, transparent); }
+  .selo::after { inset:-70%; border-style:dashed; opacity:.5; animation:girar 60s linear infinite; }
+  body[data-estado="ouvindo"] .onda { animation-duration:2.4s; border-color:var(--papel); }
+  body[data-estado="pensando"] .selo { filter:hue-rotate(250deg) saturate(1.2); animation:pensar 1s ease-in-out infinite; }
+  body[data-estado="falando"] .onda { animation-duration:1.8s; border-width:2px; }
+  body[data-estado="falando"] .selo { animation:falar .4s ease-in-out infinite alternate; }
+  body[data-estado="erro"] .selo { filter:grayscale(.8) brightness(.7); }
+  body[data-estado="pausada"] .selo, body[data-estado="iniciando"] .selo { filter:grayscale(.6) brightness(.6); }
+  .estado { font-size:12px; letter-spacing:.4em; text-transform:uppercase; opacity:.55; text-align:center; font-family:system-ui, sans-serif; }
+  .legenda { max-width:640px; text-align:center; font-size:clamp(17px,2.5vw,24px); line-height:1.55; min-height:3.2em; text-shadow:0 2px 12px #000; }
+  .legenda .quem { display:block; font:11px/1 system-ui, sans-serif; letter-spacing:.3em; opacity:.5; margin-bottom:8px; text-transform:uppercase; color:var(--brasa2); }
   .botoes { display:none; gap:12px; flex-wrap:wrap; justify-content:center; }
   body.web .botoes { display:flex; }
-  button { font:inherit; color:inherit; background:#0c1426; border:1px solid #2a4a7a; border-radius:999px;
-           padding:14px 22px; cursor:pointer; touch-action:none; }
-  button:active, button.ativo { background:#2a5bd7; border-color:#2a5bd7; }
+  button { font:14px system-ui, sans-serif; letter-spacing:.08em; color:var(--texto); background:rgba(23,17,31,.8);
+           border:1px solid #4b3a63; border-radius:6px; padding:14px 24px; cursor:pointer; touch-action:none; }
+  button:active, button.ativo { background:var(--brasa); border-color:var(--brasa); }
   .iniciar { position:fixed; inset:0; display:none; align-items:center; justify-content:center; flex-direction:column;
-             gap:16px; background:rgba(5,7,13,.92); z-index:2; text-align:center; padding:16px; }
+             gap:16px; background:rgba(7,6,11,.93); z-index:3 !important; text-align:center; padding:16px; }
   body.web.parado .iniciar { display:flex; }
-  .iniciar p { opacity:.7; max-width:360px; line-height:1.5; }
+  .iniciar p { opacity:.7; max-width:360px; line-height:1.55; }
+  @keyframes onda { 0% { opacity:.8; transform:scale(.35); } 100% { opacity:0; transform:scale(1.25); } }
   @keyframes girar { to { transform:rotate(360deg); } }
-  @keyframes respirar { 50% { transform:scale(1.06); } }
-  @keyframes pensar { 50% { transform:scale(.9) rotate(20deg); } }
-  @keyframes falar { from { transform:scale(.97); } to { transform:scale(1.12); } }
-  @media (prefers-reduced-motion: reduce) { * { animation:none !important; } }
+  @keyframes respirar { 50% { transform:scale(1.05); } }
+  @keyframes pensar { 50% { transform:scale(.92); } }
+  @keyframes falar { from { transform:scale(.97); } to { transform:scale(1.1); } }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; } #chuva { display:none; } }
 </style>
 </head>
 <body data-estado="iniciando">
@@ -49,11 +56,28 @@
     <p>Ela vai usar o microfone e o som deste aparelho. Deixe a página aberta e a tela ligada.
        Diga <b>“Konan”</b> para chamar, ou segure o botão para falar sem dizer o nome.</p>
   </div>
-  <div class="nucleo"><div class="anel"></div><div class="anel"></div><div class="anel"></div><div class="esfera"></div></div>
+  <canvas id="chuva"></canvas>
+  <div class="nucleo"><div class="onda"></div><div class="onda"></div><div class="onda"></div><div class="selo"></div></div>
   <div class="estado" id="estado">iniciando</div>
   <p class="legenda" id="legenda"></p>
   <div class="botoes"><button id="segurar">Segure para falar</button><button id="mudo">Pausar</button></div>
 <script>
+
+// ---------- chuva de fundo ----------
+(function () {
+  const c = document.getElementById("chuva"), g = c.getContext("2d"); let gotas = [];
+  function medir() { c.width = innerWidth; c.height = innerHeight;
+    gotas = Array.from({ length: Math.min(140, Math.floor(innerWidth / 8)) }, () => nova(true)); }
+  function nova(aleatoria) { return { x: Math.random() * c.width, y: aleatoria ? Math.random() * c.height : -20,
+    v: 8 + Math.random() * 9, t: 10 + Math.random() * 16 }; }
+  function quadro() {
+    g.clearRect(0, 0, c.width, c.height); g.strokeStyle = "rgba(200,190,225,.35)"; g.lineWidth = 1; g.beginPath();
+    for (const d of gotas) { g.moveTo(d.x, d.y); g.lineTo(d.x - d.t * .12, d.y + d.t); d.y += d.v; d.x -= d.v * .12;
+      if (d.y > c.height) Object.assign(d, nova(false)); }
+    g.stroke(); requestAnimationFrame(quadro);
+  }
+  addEventListener("resize", medir); medir(); quadro();
+})();
 const NOMES = { iniciando:"iniciando", dormindo:"diga “Konan”", continuando:"pode continuar", ouvindo:"ouvindo",
                 pensando:"pensando", falando:"falando", erro:"erro", pausada:"pausada" };
 const $ = (id) => document.getElementById(id);

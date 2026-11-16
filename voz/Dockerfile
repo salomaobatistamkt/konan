@@ -14,6 +14,7 @@ COPY requirements*.txt ./
 RUN if [ "$PERFIL" = "leve" ]; then pip install -r requirements-leve.txt; else pip install -r requirements.txt; fi
 
 COPY konan ./konan
+COPY conhecimento ./conhecimento
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

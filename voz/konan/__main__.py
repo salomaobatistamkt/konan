@@ -30,13 +30,21 @@ def main():
     painel = Painel()
     memoria = Memoria(os.path.join(config.DADOS, "memoria.sqlite3"))
     cerebro = Cerebro()
+    log.info("conhecimento: %d fatos novos importados de %s", memoria.importar_sementes(config.CONHECIMENTO), config.CONHECIMENTO)
     konan = Konan(memoria, cerebro, painel.publicar)
 
     if config.MODO == "web":
         from .voz import Sintetizador
 
         ouvido = Ouvido()
-        sintetizador = None if config.VOZ_MOTOR == "navegador" else Sintetizador()
+        sintetizador = None
+        if config.VOZ_MOTOR != "navegador":
+            try:
+                sintetizador = Sintetizador()
+                sintetizador.wav("Olá.")  # baixa o modelo na primeira vez e confere que funciona
+            except Exception:  # noqa: BLE001
+                log.exception("voz neural indisponível; usando a voz do navegador")
+                sintetizador = None
         painel.servir(config.INTERFACE_PORTA, konan=konan, ouvido=ouvido, sintetizador=sintetizador)
         esperar_cerebro(cerebro, log.info)
         painel.publicar("dormindo")

@@ -10,28 +10,35 @@ from urllib.parse import urlparse
 
 from . import config, matematica
 
-SISTEMA = """Você é {nome}, uma assistente de voz que mora no computador da casa do usuário.
-Você conversa como uma pessoa: calorosa, direta, com humor leve. Fala português do Brasil.
+SISTEMA = """Você é {nome}, uma assistente de voz. Você conversa com uma pessoa de verdade, em português do Brasil.
+Fale como uma brasileira educada falaria numa conversa comum: natural, clara, calorosa e direta. Nem formal demais, nem gíria.
+Use palavras normais do dia a dia: "estou", "está", "tudo bem", "certo", "claro", "combinado". Não use "tô", "tá", "suave", "beleza", "mano", "cara", "valeu" nem abreviações de fala.
 Suas respostas serão FALADAS em voz alta, então:
-- Responda curto: 1 a 3 frases, a não ser que peçam explicação.
-- Nada de markdown, listas, emojis, tabelas ou código.
-- Escreva números e fórmulas como se fala (ex.: "x ao quadrado", "raiz de dois", "três vírgula catorze").
-Para QUALQUER conta ou problema de matemática use a ferramenta calcular e confie no resultado dela; nunca invente números.
-Se não souber algo, diga que não sabe. Hoje é {hoje}.
-{memorias}"""
+- Responda curto: 1 a 3 frases, a não ser que peçam explicação. Comece pela resposta, sem rodeios.
+- Nada de markdown, listas, emojis, tabelas ou código. Escreva números como se fala.
+- Entenda o que a pessoa quis dizer mesmo que a fala venha com erros da transcrição. Se realmente não entender, peça para repetir de forma simples.
+- Para QUALQUER conta ou problema de matemática use a ferramenta calcular e confie no resultado dela; nunca invente números.
+- Se não souber algo, diga com sinceridade que não sabe.
+Exemplos do seu jeito de falar:
+Usuário: que horas são? / Você: Agora são três e meia da tarde.
+Usuário: como você está? / Você: Estou bem, obrigada por perguntar. E você, como está o seu dia?
+Usuário: preciso de uma ideia de jantar / Você: Que tal um frango grelhado com arroz e salada? É rápido e leve.
+Hoje é {hoje}.
+{fatos}{memorias}"""
 
 _DIAS = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
 _FIM_FRASE = re.compile(r"(.+?[.!?…:;])(\s+|$)", re.S)
 
 
-def montar_sistema(memorias: list[tuple[float, str, str]]) -> str:
+def montar_sistema(memorias: list[tuple[float, str, str]], fatos: list[str] | None = None) -> str:
     agora = datetime.now()
     hoje = f"{_DIAS[agora.weekday()]}, {agora:%d/%m/%Y}, {agora:%H:%M}"
     bloco = ""
     if memorias:
         linhas = [f'- em {datetime.fromtimestamp(q):%d/%m}: usuário disse "{u}" e você respondeu "{k}"' for q, u, k in memorias]
         bloco = "Lembranças de conversas antigas que podem ser úteis:\n" + "\n".join(linhas)
-    return SISTEMA.format(nome=config.NOME, hoje=hoje, memorias=bloco)
+    bloco_fatos = ("O que você sabe sobre o usuário:\n" + "\n".join(f"- {f}" for f in fatos) + "\n") if fatos else ""
+    return SISTEMA.format(nome=config.NOME, hoje=hoje, memorias=bloco, fatos=bloco_fatos)
 
 
 _SIMBOLOS = [
@@ -73,6 +80,21 @@ class Cerebro:
         self.cliente.headers.update(cabecalhos)
         # Campos extras só existem no llama.cpp; APIs externas (Groq/Gemini) podem recusá-los.
         self.local = not self.chave or url_local(self.base)
+        self.ativos = 0  # conversas em andamento (o aprendiz espera ficar em 0)
+
+    def completar(self, sistema: str, texto: str, max_tokens: int = 160) -> str:
+        """Pergunta curta, sem streaming (usada para extrair fatos)."""
+        corpo = {"model": self.modelo, "temperature": 0, "max_tokens": max_tokens, "stream": False,
+                 "messages": [{"role": "system", "content": sistema}, {"role": "user", "content": texto}]}
+        if self.local:
+            corpo["chat_template_kwargs"] = {"enable_thinking": False}
+        self.ativos += 1
+        try:
+            r = self.cliente.post(self.url, json=corpo)
+            r.raise_for_status()
+            return re.sub(r"<think>.*?</think>", "", r.json()["choices"][0]["message"].get("content") or "", flags=re.S)
+        finally:
+            self.ativos -= 1
 
     def pronto(self) -> bool:
         try:
@@ -112,6 +134,13 @@ class Cerebro:
 
     def responder(self, mensagens: list[dict], ao_calcular: Callable[[str, str], None] | None = None) -> Iterator[str]:
         """Gera a resposta frase por frase (para a voz começar a falar logo)."""
+        self.ativos += 1
+        try:
+            yield from self._responder(mensagens, ao_calcular)
+        finally:
+            self.ativos -= 1
+
+    def _responder(self, mensagens, ao_calcular):
         mensagens = list(mensagens)
         for rodada in range(4):
             chamadas: dict[int, dict] = {}
@@ -162,7 +191,7 @@ class Cerebro:
                 if ao_calcular:
                     ao_calcular(expressao, resultado)
                 mensagens.append({"role": "tool", "tool_call_id": c["id"] or f"c{n}", "content": resultado})
-        yield "Me enrolei nessa conta. Pode repetir de outro jeito?"
+        yield "Não consegui fechar essa conta. Pode repetir de outro jeito?"
 
 
 def esperar_cerebro(cerebro: Cerebro, avisar: Callable[[str], None]) -> None:
